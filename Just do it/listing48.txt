@@ -1,0 +1,68 @@
+<?php
+namespace Blog\Service;
+
+use Blog\Entity\ArticleEntity;
+use Blog\Hydrator\ArticleHydrator;
+use Blog\Table\ArticleTable;
+use Zend\Db\Adapter\Exception\InvalidQueryException;
+
+class ArticleService
+{
+    protected $entity;
+    protected $hydrator;
+    protected $table;
+
+    function __construct(
+        ArticleTable $table, ArticleEntity $entity, ArticleHydrator $hydrator
+    ) {
+        $this->setTable($table);
+        $this->setEntity($entity);
+        $this->setHydrator($hydrator);
+    }
+
+    public function create(array $data)
+    {
+        if (empty($data)) {
+            return false;
+        }
+
+        $entity = clone $this->getEntity();
+
+        $this->getHydrator()->hydrate($data, $entity);
+
+        $saveData = $this->getHydrator()->extract($entity);
+
+        $saveData['article_date']  = date('Y-m-d H:i:s');
+        $saveData['article_user']  = 1;
+        $saveData['article_count'] = 0;
+        $saveData['article_url']   = md5(serialize($saveData));
+
+        try {
+            $this->getTable()->insert($saveData);
+        } catch (InvalidQueryException $e) {
+            return false;
+        }
+
+        return $this->getTable()->getLastInsertValue();
+    }
+
+    public function getEntity()
+    {
+        return $this->entity;
+    }
+
+    public function setEntity($entity)
+    {
+        $this->entity = $entity;
+    }
+
+    public function getHydrator()
+    {
+        return $this->hydrator;
+    }
+
+    public function setHydrator($hydrator)
+    {
+        $this->hydrator = $hydrator;
+    }
+}
